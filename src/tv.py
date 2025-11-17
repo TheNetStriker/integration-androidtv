@@ -591,7 +591,7 @@ class AndroidTv(CastStatusListener, MediaStatusListener, ConnectionStatusListene
         else:
             await asyncio.sleep(backoff)
 
-    def disconnect(self) -> None:
+    def disconnect(self, fromStandby = False) -> None:
         """Disconnect from Android TV."""
         self._reconnect_delay = MIN_RECONNECT_DELAY
         self._atv.disconnect()
@@ -601,7 +601,7 @@ class AndroidTv(CastStatusListener, MediaStatusListener, ConnectionStatusListene
             except Exception:
                 pass
         self._state = DeviceState.DISCONNECTED
-        self.events.emit(Events.DISCONNECTED, self._identifier)
+        self.events.emit(Events.DISCONNECTED, self._identifier, fromStandby)
 
     # Callbacks
     async def _apply_current_app_metadata(self, current_app: str) -> dict:

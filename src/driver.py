@@ -62,7 +62,7 @@ async def on_standby():
     """
     _LOG.debug("Enter standby event: disconnecting device(s)")
     for configured in _configured_android_tvs.values():
-        configured.disconnect()
+        configured.disconnect(fromStandby=True)
 
 
 @api.listens_to(ucapi.Events.EXIT_STANDBY)
@@ -144,6 +144,9 @@ async def media_player_cmd_handler(
 
     android_tv = _configured_android_tvs[atv_id]
 
+    if android_tv.state is tv.DeviceState.DISCONNECTED:
+        await android_tv.connect(5)
+
     _LOG.info("[%s] command: %s %s", android_tv.log_id, cmd_id, params if params else "")
 
     if cmd_id == media_player.Commands.ON:
@@ -182,15 +185,17 @@ async def handle_connected(identifier: str):
     await api.set_device_state(ucapi.DeviceStates.CONNECTED)  # just to make sure the device state is set
 
 
-async def handle_disconnected(identifier: str):
+async def handle_disconnected(identifier: str, fromStandby: bool):
     """Handle Android TV disconnection."""
     if _LOG.isEnabledFor(logging.DEBUG):
         device = config.devices.get(identifier)
         _LOG.debug("[%s] device disconnected", device.name if device else identifier)
 
-    api.configured_entities.update_attributes(
-        identifier, {media_player.Attributes.STATE: media_player.States.UNAVAILABLE}
-    )
+    # If disconnect is from standby event do not set state to UNAVAILABLE so commands after wakeup can be handled.
+    if not fromStandby:
+        api.configured_entities.update_attributes(
+            identifier, {media_player.Attributes.STATE: media_player.States.UNAVAILABLE}
+        )
 
 
 async def handle_authentication_error(identifier: str):
